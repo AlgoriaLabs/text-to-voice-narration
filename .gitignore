@@ -1,0 +1,16 @@
+node_modules/
+.env
+deploy/.env
+jobs.sqlite*
+.venv/
+__pycache__/
+.pytest_cache/
+models/
+data/
+# Terraform: state holds your settings (and the facilitator key), keep it out of git
+infra/oci/.terraform/
+infra/oci/.build/
+infra/oci/*.tfstate
+infra/oci/*.tfstate.*
+infra/oci/terraform.tfvars
+infra/oci/.terraform.lock.hcl.bak

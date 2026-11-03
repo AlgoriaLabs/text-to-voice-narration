@@ -1,0 +1,33 @@
+{
+  "name": "text-to-voice-narration",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Text-to-speech narration as a paid AI service on Stellar mainnet: Kokoro-82M voices, priced by text length, on Oracle Cloud's free tier.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "models": "sh scripts/download-models.sh",
+    "dev": "node --env-file-if-exists=.env node_modules/@stellar-agent-services/provider-kit/dist/cli/index.js dev --config provider.config.json --with \"sh scripts/python.sh -m uvicorn app:app --port 8000 --reload\"",
+    "test": "npm run test:api && npm run test:gateway",
+    "test:api": "sh scripts/python.sh -m pytest",
+    "test:gateway": "node --test tests/gateway.test.mjs",
+    "check": "node --env-file-if-exists=.env node_modules/@stellar-agent-services/provider-kit/dist/cli/index.js check --config provider.config.json --dev",
+    "status": "node --env-file-if-exists=.env node_modules/@stellar-agent-services/provider-kit/dist/cli/index.js status --config provider.config.json",
+    "launch": "sh scripts/launch.sh",
+    "deploy": "terraform -chdir=infra/oci apply",
+    "start": "node --env-file-if-exists=.env node_modules/@stellar-agent-services/provider-kit/dist/cli/index.js serve --config provider.config.json"
+  },
+  "dependencies": {
+    "@stellar-agent-services/provider-kit": "0.1.0"
+  },
+  "overrides": {
+    "@trionlabs/stellar8004": {
+      "@stellar/stellar-sdk": "16.4.1"
+    }
+  },
+  "devDependencies": {
+    "@stellar/stellar-sdk": "16.4.1"
+  }
+}

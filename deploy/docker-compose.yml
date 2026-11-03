@@ -1,0 +1,55 @@
+# The production stack on one machine: the narration container (API + gateway) behind Caddy, which gets a Let's
+# Encrypt certificate for SITE_ADDRESS by itself and serves the audio files straight from the shared volume.
+#
+#   cd deploy && docker compose up -d --build
+#
+# deploy/.env (written by Terraform from your project's .env, never committed) holds PAY_TO, AGENT_ID,
+# FACILITATOR_AUTH, SOROBAN_RPC_URL, SITE_ADDRESS and PUBLIC_ORIGIN. Only Caddy publishes ports: the gateway and the
+# API are reachable inside this network only.
+
+name: narration
+
+services:
+  narration:
+    build:
+      context: ..
+      args:
+        KOKORO_MODEL: ${KOKORO_MODEL:-kokoro-v1.0.onnx}
+    image: text-to-voice-narration:latest
+    restart: unless-stopped
+    # Room for a narration in progress to finish when the container stops (start.sh stops the gateway first).
+    stop_grace_period: 3m
+    env_file: .env
+    environment:
+      JOB_DB_PATH: /data/jobs.sqlite
+      DATA_DIR: /data
+    volumes:
+      - data:/data
+    expose:
+      - "8787"
+    logging:
+      options: { max-size: "10m", max-file: "5" }
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      - narration
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - data:/srv/data:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging:
+      options: { max-size: "10m", max-file: "5" }
+
+volumes:
+  data: {}
+  caddy_data: {}
+  caddy_config: {}

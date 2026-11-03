@@ -1,0 +1,36 @@
+#cloud-config
+# First boot of the server: Docker, the firewall opened for Caddy, and a folder for releases. The app itself comes
+# with `terraform apply` (deploy.tf), once your .env has PAY_TO and FACILITATOR_AUTH.
+
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - unzip
+  - netfilter-persistent
+  - iptables-persistent
+  - unattended-upgrades
+
+write_files:
+  - path: /etc/docker/daemon.json
+    permissions: "0644"
+    content: |
+      { "log-driver": "json-file", "log-opts": { "max-size": "10m", "max-file": "5" } }
+
+runcmd:
+  # Oracle's Ubuntu images reject everything but SSH in iptables; open HTTP, HTTPS and HTTP/3 above that rule.
+  - |
+    for rule in "-p tcp --dport 80" "-p tcp --dport 443" "-p udp --dport 443"; do
+      line=$(iptables -L INPUT --line-numbers | awk '/REJECT/ {print $1; exit}')
+      iptables -I INPUT "${line:-1}" -m state --state NEW $rule -j ACCEPT
+    done
+    netfilter-persistent save
+  # Docker Engine with the compose and buildx plugins, from Docker's own repository. Retried: on first boot another
+  # apt run can hold the package lock.
+  - [sh, -ec, 'curl -fsSL --retry 5 https://get.docker.com -o /tmp/get-docker.sh; for i in 1 2 3 4 5; do sh /tmp/get-docker.sh && break; sleep 30; done']
+  - usermod -aG docker ubuntu
+  - systemctl enable --now docker
+  - install -d -o ubuntu -g ubuntu /opt/narration
+  # Terraform's deploy waits for this file: written only when Docker and Compose work.
+  - [sh, -ec, 'docker compose version && echo "cloud-init done" > /opt/narration/.ready']

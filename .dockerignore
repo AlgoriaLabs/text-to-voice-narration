@@ -1,0 +1,13 @@
+.git
+node_modules/
+.env
+.env.*
+deploy/.env
+jobs.sqlite*
+.venv/
+__pycache__/
+.pytest_cache/
+models/
+data/
+infra/
+tests/

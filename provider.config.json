@@ -1,0 +1,635 @@
+{
+  "$schema": "./node_modules/@stellar-agent-services/provider-kit/schemas/gateway-config.schema.json",
+  "baseUrl": "env:PUBLIC_ORIGIN",
+  "network": "stellar:pubnet",
+  "payTo": "env:PAY_TO",
+  "facilitator": "https://channels.openzeppelin.com/x402",
+  "facilitatorHeaders": {
+    "Authorization": "env:FACILITATOR_AUTH"
+  },
+  "rpcUrl": "env:SOROBAN_RPC_URL",
+  "provider": {
+    "name": "Text to Speech Narration",
+    "description": "Text-to-speech (TTS) voice narration API: narrate any text as natural spoken audio (MP3, Opus or WAV). An AI narrator that reads aloud short, medium or long texts: articles, audiobooks, podcasts, video voiceovers, accessibility and agent replies. 41 voices in English (US and UK), Spanish, French, Italian, Brazilian Portuguese and Hindi. Pay per call by text length, up to 5,000 characters.",
+    "agentId": "env:AGENT_ID",
+    "dataUse": {
+      "storesInputs": false,
+      "trainsOnInputs": false
+    }
+  },
+  "store": "env:JOB_DB_PATH",
+  "maxTimeoutSeconds": 180,
+  "rateLimit": {
+    "requests": 30,
+    "windowSeconds": 60,
+    "keyHeader": "X-Forwarded-For"
+  },
+  "services": [
+    {
+      "name": "narrate-short",
+      "title": "Narrate up to 500 characters",
+      "description": "Reads up to 500 characters of text aloud (about 30 seconds of speech): replies, notifications, captions or a paragraph. Returns a link to the audio file (MP3, Opus or WAV) and its duration; the link stays valid for 24 hours. 41 natural voices in English (US and UK), Spanish, French, Italian, Brazilian Portuguese and Hindi: the voice sets the language. Reads plain text only, no SSML.",
+      "price": "0.005",
+      "charge": "on-success",
+      "expectedDurationSeconds": 15,
+      "timeoutSeconds": 60,
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "pattern": "[A-Za-z0-9À-ɏऀ-ॿ]",
+            "description": "The text to read aloud, up to 500 characters. Plain text; blank lines become pauses."
+          },
+          "voice": {
+            "type": "string",
+            "enum": [
+              "af_heart",
+              "af_alloy",
+              "af_aoede",
+              "af_bella",
+              "af_jessica",
+              "af_kore",
+              "af_nicole",
+              "af_nova",
+              "af_river",
+              "af_sarah",
+              "af_sky",
+              "am_adam",
+              "am_echo",
+              "am_eric",
+              "am_fenrir",
+              "am_liam",
+              "am_michael",
+              "am_onyx",
+              "am_puck",
+              "am_santa",
+              "bf_alice",
+              "bf_emma",
+              "bf_isabella",
+              "bf_lily",
+              "bm_daniel",
+              "bm_fable",
+              "bm_george",
+              "bm_lewis",
+              "ef_dora",
+              "em_alex",
+              "em_santa",
+              "ff_siwis",
+              "hf_alpha",
+              "hf_beta",
+              "hm_omega",
+              "hm_psi",
+              "if_sara",
+              "im_nicola",
+              "pf_dora",
+              "pm_alex",
+              "pm_santa"
+            ],
+            "default": "af_heart",
+            "description": "Voice id. The first letter sets the language: a = American English, b = British English, e = Spanish, f = French, h = Hindi, i = Italian, p = Brazilian Portuguese. The second letter is f (female) or m (male)."
+          },
+          "speed": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 2,
+            "default": 1,
+            "description": "Speaking rate: 1 is normal, 0.5 half as fast, 2 twice as fast."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "mp3",
+              "opus",
+              "wav"
+            ],
+            "default": "mp3",
+            "description": "Audio file format: mp3 (about 56 kbps), opus in Ogg (about 37 kbps) or 16-bit wav."
+          }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "audioUrl",
+          "format",
+          "mimeType",
+          "durationSeconds",
+          "characters",
+          "voice",
+          "language",
+          "sampleRate",
+          "bytes",
+          "expiresAt"
+        ],
+        "properties": {
+          "audioUrl": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 300,
+            "description": "HTTPS link to the audio file. It stays valid for at least 24 hours, until expiresAt."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "mp3",
+              "opus",
+              "wav"
+            ]
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "audio/mpeg",
+              "audio/ogg",
+              "audio/wav"
+            ]
+          },
+          "durationSeconds": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Length of the audio"
+          },
+          "characters": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Characters read, after whitespace clean-up"
+          },
+          "voice": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "sampleRate": {
+            "type": "integer",
+            "description": "Samples per second, 24000"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Size of the audio file"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40,
+            "description": "When the audio file is deleted"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": {
+            "text": "Welcome back! Your order has shipped and should arrive on Friday.",
+            "voice": "af_heart",
+            "format": "mp3"
+          },
+          "output": {
+            "audioUrl": "https://narration.example.com/audio/Zk3PqY7vR2mN8cX1bT5wLs4H.mp3",
+            "format": "mp3",
+            "mimeType": "audio/mpeg",
+            "durationSeconds": 4.3,
+            "characters": 65,
+            "voice": "af_heart",
+            "language": "English (US)",
+            "sampleRate": 24000,
+            "bytes": 30100,
+            "expiresAt": "2026-11-04T09:30:00Z"
+          }
+        }
+      ],
+      "tags": [
+        "text-to-speech",
+        "tts",
+        "narration",
+        "voice",
+        "audio",
+        "speech",
+        "voiceover",
+        "read-aloud"
+      ],
+      "maxInputBytes": 8192,
+      "capacity": {
+        "concurrency": 2,
+        "maxQueued": 20,
+        "maxQueueWaitSeconds": 30
+      },
+      "upstream": {
+        "url": "http://127.0.0.1:8000/tts/narrate-short"
+      }
+    },
+    {
+      "name": "narrate-medium",
+      "title": "Narrate up to 2,000 characters",
+      "description": "Reads up to 2,000 characters of text aloud (about 2 minutes of speech): a short article, a script or a voiceover. For 500 characters or fewer, narrate-short does the same. Returns a link to the audio file (MP3, Opus or WAV) and its duration; the link stays valid for 24 hours. 41 natural voices in English (US and UK), Spanish, French, Italian, Brazilian Portuguese and Hindi: the voice sets the language. Reads plain text only, no SSML.",
+      "price": "0.02",
+      "charge": "on-success",
+      "expectedDurationSeconds": 50,
+      "timeoutSeconds": 150,
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "pattern": "[A-Za-z0-9À-ɏऀ-ॿ]",
+            "description": "The text to read aloud, up to 2,000 characters. Plain text; blank lines become pauses."
+          },
+          "voice": {
+            "type": "string",
+            "enum": [
+              "af_heart",
+              "af_alloy",
+              "af_aoede",
+              "af_bella",
+              "af_jessica",
+              "af_kore",
+              "af_nicole",
+              "af_nova",
+              "af_river",
+              "af_sarah",
+              "af_sky",
+              "am_adam",
+              "am_echo",
+              "am_eric",
+              "am_fenrir",
+              "am_liam",
+              "am_michael",
+              "am_onyx",
+              "am_puck",
+              "am_santa",
+              "bf_alice",
+              "bf_emma",
+              "bf_isabella",
+              "bf_lily",
+              "bm_daniel",
+              "bm_fable",
+              "bm_george",
+              "bm_lewis",
+              "ef_dora",
+              "em_alex",
+              "em_santa",
+              "ff_siwis",
+              "hf_alpha",
+              "hf_beta",
+              "hm_omega",
+              "hm_psi",
+              "if_sara",
+              "im_nicola",
+              "pf_dora",
+              "pm_alex",
+              "pm_santa"
+            ],
+            "default": "af_heart",
+            "description": "Voice id. The first letter sets the language: a = American English, b = British English, e = Spanish, f = French, h = Hindi, i = Italian, p = Brazilian Portuguese. The second letter is f (female) or m (male)."
+          },
+          "speed": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 2,
+            "default": 1,
+            "description": "Speaking rate: 1 is normal, 0.5 half as fast, 2 twice as fast."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "mp3",
+              "opus",
+              "wav"
+            ],
+            "default": "mp3",
+            "description": "Audio file format: mp3 (about 56 kbps), opus in Ogg (about 37 kbps) or 16-bit wav."
+          }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "audioUrl",
+          "format",
+          "mimeType",
+          "durationSeconds",
+          "characters",
+          "voice",
+          "language",
+          "sampleRate",
+          "bytes",
+          "expiresAt"
+        ],
+        "properties": {
+          "audioUrl": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 300,
+            "description": "HTTPS link to the audio file. It stays valid for at least 24 hours, until expiresAt."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "mp3",
+              "opus",
+              "wav"
+            ]
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "audio/mpeg",
+              "audio/ogg",
+              "audio/wav"
+            ]
+          },
+          "durationSeconds": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Length of the audio"
+          },
+          "characters": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Characters read, after whitespace clean-up"
+          },
+          "voice": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "sampleRate": {
+            "type": "integer",
+            "description": "Samples per second, 24000"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Size of the audio file"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40,
+            "description": "When the audio file is deleted"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": {
+            "text": "Bienvenidos a nuestro podcast semanal. Hoy hablamos de energía solar y de cómo reducir la factura de la luz en casa.",
+            "voice": "ef_dora",
+            "format": "opus"
+          },
+          "output": {
+            "audioUrl": "https://narration.example.com/audio/a8Rt2LmQ9xW4vB7nK1pZc3Ye.ogg",
+            "format": "opus",
+            "mimeType": "audio/ogg",
+            "durationSeconds": 7.9,
+            "characters": 116,
+            "voice": "ef_dora",
+            "language": "Spanish",
+            "sampleRate": 24000,
+            "bytes": 36500,
+            "expiresAt": "2026-11-04T09:30:00Z"
+          }
+        }
+      ],
+      "tags": [
+        "text-to-speech",
+        "tts",
+        "narration",
+        "voice",
+        "audio",
+        "speech",
+        "voiceover",
+        "read-aloud"
+      ],
+      "maxInputBytes": 32768,
+      "capacity": {
+        "concurrency": 1,
+        "maxQueued": 10,
+        "maxQueueWaitSeconds": 60
+      },
+      "upstream": {
+        "url": "http://127.0.0.1:8000/tts/narrate-medium"
+      }
+    },
+    {
+      "name": "narrate-long",
+      "title": "Narrate up to 5,000 characters",
+      "description": "Reads up to 5,000 characters of text aloud (about 5 minutes of speech): an article, a chapter or a long voiceover. For 2,000 characters or fewer, narrate-medium does the same. Returns a link to the audio file (MP3, Opus or WAV) and its duration; the link stays valid for 24 hours. 41 natural voices in English (US and UK), Spanish, French, Italian, Brazilian Portuguese and Hindi: the voice sets the language. Reads plain text only, no SSML.",
+      "price": "0.05",
+      "charge": "upfront",
+      "expectedDurationSeconds": 130,
+      "timeoutSeconds": 600,
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 5000,
+            "pattern": "[A-Za-z0-9À-ɏऀ-ॿ]",
+            "description": "The text to read aloud, up to 5,000 characters. Plain text; blank lines become pauses."
+          },
+          "voice": {
+            "type": "string",
+            "enum": [
+              "af_heart",
+              "af_alloy",
+              "af_aoede",
+              "af_bella",
+              "af_jessica",
+              "af_kore",
+              "af_nicole",
+              "af_nova",
+              "af_river",
+              "af_sarah",
+              "af_sky",
+              "am_adam",
+              "am_echo",
+              "am_eric",
+              "am_fenrir",
+              "am_liam",
+              "am_michael",
+              "am_onyx",
+              "am_puck",
+              "am_santa",
+              "bf_alice",
+              "bf_emma",
+              "bf_isabella",
+              "bf_lily",
+              "bm_daniel",
+              "bm_fable",
+              "bm_george",
+              "bm_lewis",
+              "ef_dora",
+              "em_alex",
+              "em_santa",
+              "ff_siwis",
+              "hf_alpha",
+              "hf_beta",
+              "hm_omega",
+              "hm_psi",
+              "if_sara",
+              "im_nicola",
+              "pf_dora",
+              "pm_alex",
+              "pm_santa"
+            ],
+            "default": "af_heart",
+            "description": "Voice id. The first letter sets the language: a = American English, b = British English, e = Spanish, f = French, h = Hindi, i = Italian, p = Brazilian Portuguese. The second letter is f (female) or m (male)."
+          },
+          "speed": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 2,
+            "default": 1,
+            "description": "Speaking rate: 1 is normal, 0.5 half as fast, 2 twice as fast."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "mp3",
+              "opus",
+              "wav"
+            ],
+            "default": "mp3",
+            "description": "Audio file format: mp3 (about 56 kbps), opus in Ogg (about 37 kbps) or 16-bit wav."
+          }
+        },
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "audioUrl",
+          "format",
+          "mimeType",
+          "durationSeconds",
+          "characters",
+          "voice",
+          "language",
+          "sampleRate",
+          "bytes",
+          "expiresAt"
+        ],
+        "properties": {
+          "audioUrl": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 300,
+            "description": "HTTPS link to the audio file. It stays valid for at least 24 hours, until expiresAt."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "mp3",
+              "opus",
+              "wav"
+            ]
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "audio/mpeg",
+              "audio/ogg",
+              "audio/wav"
+            ]
+          },
+          "durationSeconds": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Length of the audio"
+          },
+          "characters": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Characters read, after whitespace clean-up"
+          },
+          "voice": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "sampleRate": {
+            "type": "integer",
+            "description": "Samples per second, 24000"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Size of the audio file"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40,
+            "description": "When the audio file is deleted"
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": {
+            "text": "Chapter one. The old lighthouse stood at the edge of the cliff, its lamp long dark.",
+            "voice": "bm_george",
+            "format": "mp3"
+          },
+          "output": {
+            "audioUrl": "https://narration.example.com/audio/Qw8Er5Ty2Ui9Op3As6Df1Gh4.mp3",
+            "format": "mp3",
+            "mimeType": "audio/mpeg",
+            "durationSeconds": 5.6,
+            "characters": 83,
+            "voice": "bm_george",
+            "language": "English (UK)",
+            "sampleRate": 24000,
+            "bytes": 39200,
+            "expiresAt": "2026-11-04T09:30:00Z"
+          }
+        }
+      ],
+      "tags": [
+        "text-to-speech",
+        "tts",
+        "narration",
+        "voice",
+        "audio",
+        "speech",
+        "voiceover",
+        "read-aloud"
+      ],
+      "maxInputBytes": 65536,
+      "capacity": {
+        "concurrency": 1,
+        "maxQueued": 5,
+        "maxQueueWaitSeconds": 300
+      },
+      "upstream": {
+        "url": "http://127.0.0.1:8000/tts/narrate-long"
+      }
+    }
+  ]
+}

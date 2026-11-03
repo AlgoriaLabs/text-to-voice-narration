@@ -1,0 +1,38 @@
+# HTTPS in front of the narration container. Caddy gets and renews the Let's Encrypt certificate for SITE_ADDRESS
+# (your domain, or <ip-with-dashes>.sslip.io) by itself; ports 80 and 443 must be open.
+#
+#   /audio/<file>   the narrations, served from the shared volume (read-only), for 25 hours
+#   everything else the Provider Kit gateway: manifest, paid jobs, job status and results, /healthz
+
+{$SITE_ADDRESS} {
+	handle_path /audio/* {
+		@invalid not path_regexp ^/[A-Za-z0-9_-]+\.(mp3|ogg|wav)$
+		respond @invalid 404
+
+		@mp3 path *.mp3
+		@ogg path *.ogg
+		@wav path *.wav
+		header @mp3 Content-Type audio/mpeg
+		header @ogg Content-Type audio/ogg
+		header @wav Content-Type audio/wav
+		header {
+			Access-Control-Allow-Origin *
+			Cache-Control "public, max-age=3600"
+			X-Content-Type-Options nosniff
+		}
+		root * /srv/data/audio
+		file_server
+	}
+
+	handle {
+		encode gzip
+		# Caddy sets X-Forwarded-For to the caller's address (it trusts none sent in), which the gateway's rate limit
+		# keys on (rateLimit.keyHeader in provider.config.json).
+		reverse_proxy narration:8787
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
