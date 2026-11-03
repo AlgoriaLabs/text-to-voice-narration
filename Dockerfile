@@ -26,6 +26,9 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY app.py provider.config.json start.sh ./
 COPY narration ./narration
+# Files can arrive owner-only (mode 600) from the build context; the service runs as the node user, so make
+# everything readable.
+RUN chmod -R a+rX /app
 
 RUN mkdir -p /data && chown node:node /data
 VOLUME /data
